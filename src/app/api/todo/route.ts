@@ -58,8 +58,8 @@ async function linkToActivity(client: PoolClient, userId: string, taskId: string
   const { unit_id, category_id, auto_register } = pref.rows[0] || {};
   if (!auto_register || !unit_id || !category_id) return false;
   const inserted = await client.query(
-    "INSERT INTO activities(user_id,unit_id,category_id,description,status,activity_date) VALUES($1,$2,$3,$4,'DONE',(now() AT TIME ZONE 'America/Campo_Grande')::date) RETURNING id::text",
-    [userId, unit_id, category_id, title],
+    "INSERT INTO activities(user_id,unit_id,category_id,description,status,activity_date) SELECT $1,$2,$3,$4,'DONE',COALESCE((t.completed_at AT TIME ZONE 'America/Campo_Grande')::date,(now() AT TIME ZONE 'America/Campo_Grande')::date) FROM todo_tasks t WHERE t.id=$5 AND t.user_id=$1 RETURNING id::text",
+    [userId, unit_id, category_id, title, taskId],
   );
   await client.query('UPDATE todo_tasks SET activity_id=$1 WHERE id=$2 AND user_id=$3', [inserted.rows[0].id, taskId, userId]);
   return true;
