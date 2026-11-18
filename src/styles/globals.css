@@ -310,3 +310,26 @@ button {
     overflow: visible;
   }
 }
+
+
+/* App shell compacto para a aba de tarefas, preservando acesso às demais abas. */
+.app-shell--todo {
+  max-width:none;
+  grid-template-columns:70px minmax(0,1fr);
+  padding:12px 18px 36px;
+  gap:12px;
+}
+.app-shell--todo .side--todo {padding:8px 6px;border-radius:12px;top:96px;}
+.app-shell--todo .side--todo .nav-label,
+.app-shell--todo .side--todo .hint,
+.app-shell--todo .side--todo .MuiDivider-root{display:none}
+.app-shell--todo .side--todo .MuiButton-root{
+  justify-content:center;
+  padding:13px 7px;
+  min-width:0;
+}
+.app-shell--todo .side--todo .MuiButton-startIcon{margin:0}
+@media(max-width:720px){
+  .app-shell--todo{display:block;padding:8px 8px 95px}
+  .app-shell--todo .side--todo{display:none}
+}
