@@ -1,6 +1,5 @@
 import 'server-only';
 import { Pool } from 'pg';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { NextRequest, NextResponse } from 'next/server';
 
 const url = process.env.DATABASE_URL;

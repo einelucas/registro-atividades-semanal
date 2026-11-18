@@ -720,7 +720,7 @@ export default function App() {
                   {current.name.slice(0, 2).toUpperCase()}
                 </Avatar>
               </div>
-              <Tooltip title="Sair">
+              <Button size="small" href="/account" sx={{textTransform:'none'}}>Minha conta</Button><Tooltip title="Sair">
                 <IconButton
                   onClick={async () => { await fetch('/api/auth/logout',{method:'POST'}); window.location.assign('/login'); }}
                 >
