@@ -1,6 +1,5 @@
 import 'server-only';
 import { Pool } from 'pg';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { NextRequest, NextResponse } from 'next/server';
 
 const url = process.env.DATABASE_URL;
@@ -11,35 +10,19 @@ export const pool = () => {
   return globalPool.__inpasaPool;
 };
 export class ApiError extends Error { constructor(public status:number, message:string){super(message);} }
-export type Identity = { demo:boolean; userId?:string; role?:'MANAGER'|'COLLABORATOR'; oid?:string };
-export async function identity(req:NextRequest):Promise<Identity> {
-  const header = req.headers.get('authorization') || '';
-  if (process.env.ENABLE_DEMO_AUTH === 'true' && !header) return { demo:true };
-  if (!header.startsWith('Bearer ')) throw new ApiError(401, 'Autenticação corporativa obrigatória');
-  const tenant = process.env.ENTRA_TENANT_ID;
-  const audience = process.env.ENTRA_API_AUDIENCE;
-  if (!tenant || !audience) throw new ApiError(503,'Autenticação Entra não configurada no servidor');
-  const jwks = createRemoteJWKSet(new URL(`https://login.microsoftonline.com/${tenant}/discovery/v2.0/keys`));
-  const {payload} = await jwtVerify(header.slice(7), jwks, {audience, issuer:`https://login.microsoftonline.com/${tenant}/v2.0`});
-  if (typeof payload.oid !== 'string') throw new ApiError(403,'Token sem identificador corporativo');
-  const result = await pool().query('SELECT id, role FROM app_users WHERE entra_oid=$1 AND active=true',[payload.oid]);
-  if (!result.rows[0]) throw new ApiError(403,'Usuário não cadastrado ou inativo');
-  return {demo:false,userId:result.rows[0].id,role:result.rows[0].role,oid:payload.oid};
+
+export type Identity={demo:false;userId:string;role:'MANAGER'|'COLLABORATOR'};
+export async function identity(_req:NextRequest):Promise<Identity>{
+ const {sessionUser}=await import('./auth');
+ const user=await sessionUser();
+ if(!user)throw new ApiError(401,'Sessão expirada. Faça login novamente.');
+ return {demo:false,userId:user.id,role:user.role};
 }
-export function requireManager(user:Identity, actor?:string) {
-  if (user.demo) { if(!actor) throw new ApiError(400,'Informe o usuário da demonstração'); return; }
-  if (user.role !== 'MANAGER') throw new ApiError(403,'Acesso restrito à gestão');
+export function requireManager(user:Identity,_actor?:string){
+ if(user.role!=='MANAGER')throw new ApiError(403,'Acesso restrito à gestão');
 }
-export function actorId(user:Identity, supplied:string|null) {
-  if (!user.demo) return user.userId!;
-  if (!supplied || !/^[0-9a-f-]{36}$/i.test(supplied)) throw new ApiError(400,'Usuário da demonstração inválido');
-  return supplied;
-}
-export async function assertDemoActor(id:string) {
-  const u=await pool().query('SELECT id,role FROM app_users WHERE id=$1 AND active=true',[id]);
-  if(!u.rows[0]) throw new ApiError(403,'Usuário não encontrado');
-  return u.rows[0] as {id:string;role:'MANAGER'|'COLLABORATOR'};
-}
+export function actorId(user:Identity,_supplied:string|null){return user.userId;}
+export async function assertDemoActor(_id:string){throw new ApiError(403,'Acesso de demonstração desativado');}
 export function jsonError(error:unknown) {
   if(error instanceof ApiError) return NextResponse.json({error:error.message},{status:error.status});
   if(error instanceof Error && (error as {code?:string}).code === '23503') return NextResponse.json({error:'Registro em uso por outra entidade.'},{status:409});

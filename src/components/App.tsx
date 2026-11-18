@@ -155,49 +155,6 @@ const headline = (
   </Stack>
 );
 
-async function getAccessToken(): Promise<string | null> {
-  const config =
-    (
-      window as Window & {
-        INPASA_CONFIG?: { clientId?: string; tenant?: string; scope?: string };
-      }
-    ).INPASA_CONFIG || {};
-  const clientId = config.clientId;
-  const tenant = config.tenant;
-  const scope = config.scope;
-  if (!clientId || !tenant || !scope) return null;
-  const { PublicClientApplication } = await import("@azure/msal-browser");
-  const auth = await PublicClientApplication.createPublicClientApplication({
-    auth: {
-      clientId,
-      authority: `https://login.microsoftonline.com/${tenant}`,
-      redirectUri: window.location.origin,
-    },
-  });
-  let account = auth.getAllAccounts()[0];
-  if (!account) {
-    const result = await auth.loginPopup({ scopes: [scope] });
-    account = result.account;
-  }
-  if (!account) throw new Error("Não foi possível autenticar.");
-  try {
-    return (await auth.acquireTokenSilent({ scopes: [scope], account }))
-      .accessToken;
-  } catch {
-    return (await auth.acquireTokenPopup({ scopes: [scope], account }))
-      .accessToken;
-  }
-}
-// Runtime config ensures Vite output does not depend on Next-specific process globals.
-const runtimeEnv = () => ({
-  api:
-    (typeof window !== "undefined" &&
-      (window as Window & { INPASA_API_URL?: string }).INPASA_API_URL) ||
-    "",
-  demo:
-    typeof window !== "undefined" &&
-    (window as Window & { INPASA_DEMO?: boolean }).INPASA_DEMO === true,
-});
 function csvDownload(rows: Activity[]) {
   const escape = (x: string) => {
     const v = /^[=+@\-\t\r]/.test(x) ? `'${x}` : x;
@@ -229,7 +186,6 @@ function csvDownload(rows: Activity[]) {
 export default function App() {
   const [data, setData] = useState<Bootstrap | null>(null),
     [current, setCurrent] = useState<Person | null>(null),
-    [personChoice, setPersonChoice] = useState(""),
     [page, setPage] = useState<Page>("register"),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),
@@ -251,50 +207,36 @@ export default function App() {
     [status, setStatus] = useState<ActivityStatus>("DONE");
   const [newUnit, setNewUnit] = useState(""),
     [newCategory, setNewCategory] = useState("");
-  const demo = data?.demo ?? false;
+  const demo = false;
   const manager = current?.role === "MANAGER";
   const request = useCallback(
     async (path: string, options: RequestInit = {}) => {
-      const base = runtimeEnv().api.replace(/\/$/, "");
+      const base = "";
       const res = await fetch(`${base}/api${path}`, {
         ...options,
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+
         },
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || `Erro HTTP ${res.status}`);
       return json;
     },
-    [token],
+    [],
   );
   const refresh = useCallback(async () => {
     const result = await request("/bootstrap");
     setData(result);
-    setPersonChoice((v) => v || result.people[0]?.id || "");
+
     setCurrent(
-      (c) => (c && result.people.find((p: Person) => p.id === c.id)) || null,
+      () => result.people.find((p: Person) => p.id === result.currentUserId) || null,
     );
     return result as Bootstrap;
   }, [request]);
   useEffect(() => {
     let active = true;
-    refresh()
-      .catch((e) => {
-        if (!active) return;
-        if (
-          String(e.message).includes("Autenticação corporativa obrigatória")
-        ) {
-          setData({
-            demo: false,
-            people: [],
-            units: [],
-            categories: [],
-            activities: [],
-          });
-        } else setError(e.message || "Erro ao carregar dados");
-      })
+    refresh().catch((e) => {if(!active)return;if(String(e.message).includes('Sessão expirada'))window.location.assign('/login');else setError(e.message||'Erro ao carregar dados');})
       .finally(() => {
         if (active) setLoading(false);
       });
@@ -381,34 +323,6 @@ export default function App() {
       setCategoryId((v) => v || data.categories[0]?.id || "");
     }
   }, [data]);
-  const enter = async () => {
-    if (!data) return;
-    if (data.demo) {
-      const selected = data.people.find((p) => p.id === personChoice);
-      if (selected) setCurrent(selected);
-    } else {
-      setBusy(true);
-      try {
-        const access = await getAccessToken();
-        if (!access)
-          throw new Error(
-            "Configure NEXT_PUBLIC_ENTRA_CLIENT_ID, NEXT_PUBLIC_ENTRA_TENANT_ID e NEXT_PUBLIC_ENTRA_API_SCOPE no frontend.",
-          );
-        setToken(access);
-        setError("");
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Falha de autenticação");
-      } finally {
-        setBusy(false);
-      }
-    }
-  };
-  useEffect(() => {
-    if (token && !demo && data) {
-      const who = data.people[0];
-      if (who) setCurrent(who);
-    }
-  }, [token, data, demo]);
   const saveActivity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!current) return;
@@ -770,94 +684,7 @@ export default function App() {
           </Alert>
         </Box>
       ) : !current ? (
-        <div className="login-layout">
-          <div className="login-hero">
-            <div>
-              <Typography
-                variant="overline"
-                fontWeight={800}
-                sx={{ letterSpacing: 3 }}
-              >
-                INPASA • PROJETOS & ARQUITETURA
-              </Typography>
-              <h1>
-                Seu trabalho.
-                <br />
-                Mais visível.
-                <br />
-                Mais simples.
-              </h1>
-              <Typography
-                sx={{ maxWidth: 440, lineHeight: 1.7, color: "#d2e1f5" }}
-              >
-                Registre suas entregas em segundos. Transforme a rotina da
-                equipe em informações claras para a gestão.
-              </Typography>
-            </div>
-            <span className="login-foot">
-              Plataforma interna •{" "}
-              {demo ? "Demonstração" : "Acesso corporativo"}
-            </span>
-          </div>
-          <div className="login-box">
-            <div>
-              <img
-                src="/logo-inpasa.png"
-                alt="INPASA"
-                style={{
-                  width: 155,
-                  height: 75,
-                  objectFit: "contain",
-                  objectPosition: "left",
-                }}
-              />
-              <Typography variant="h4" sx={{ mt: 3, mb: 1 }}>
-                Bem-vindo(a).
-              </Typography>
-              <Typography color="text.secondary">
-                {demo
-                  ? "Escolha um perfil para explorar a demonstração."
-                  : "Entre usando sua conta corporativa Microsoft."}
-              </Typography>
-              {demo && (
-                <TextField
-                  select
-                  fullWidth
-                  label="Seu usuário"
-                  sx={{ mt: 4 }}
-                  value={personChoice}
-                  onChange={(e) => setPersonChoice(e.target.value)}
-                >
-                  {data.people.map((p) => (
-                    <MenuItem key={p.id} value={p.id}>
-                      {p.name} —{" "}
-                      {p.role === "MANAGER" ? "Gestora" : "Colaborador"}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              )}
-              <Button
-                fullWidth
-                size="large"
-                variant="contained"
-                disabled={busy}
-                onClick={enter}
-                sx={{ mt: 2 }}
-              >
-                {demo ? "Entrar no aplicativo" : "Entrar com Microsoft Entra"}
-              </Button>
-              <Typography
-                fontSize={12}
-                color="text.secondary"
-                sx={{ mt: 2.5, lineHeight: 1.6 }}
-              >
-                {demo
-                  ? "Modo demonstração não oferece autenticação real. Não insira informações confidenciais."
-                  : "Acesso autorizado conforme o cadastro de usuários corporativos no banco."}
-              </Typography>
-            </div>
-          </div>
-        </div>
+        <Box sx={{p:4,textAlign:'center'}}>Carregando perfil...</Box>
       ) : (
         <>
           <header className="main-header">
@@ -893,13 +720,9 @@ export default function App() {
                   {current.name.slice(0, 2).toUpperCase()}
                 </Avatar>
               </div>
-              <Tooltip title="Sair">
+              <Button size="small" href="/account" sx={{textTransform:'none'}}>Minha conta</Button><Tooltip title="Sair">
                 <IconButton
-                  onClick={() => {
-                    setCurrent(null);
-                    setPage("register");
-                    setToken(null);
-                  }}
+                  onClick={async () => { await fetch('/api/auth/logout',{method:'POST'}); window.location.assign('/login'); }}
                 >
                   <LogOut size={19} />
                 </IconButton>
@@ -1337,9 +1160,7 @@ export default function App() {
                   </div>
                   <Box sx={{ mt: 2 }}>
                     <Alert severity={demo ? "warning" : "info"}>
-                      {demo
-                        ? "Demonstração: o seletor de usuários não autentica. Em produção desative ENABLE_DEMO_AUTH e configure Microsoft Entra ID."
-                        : "As permissões de usuário e gestor são validadas na API pelo Microsoft Entra ID."}
+                      "As permissões de usuários e gestores são verificadas no servidor."
                     </Alert>
                   </Box>
                 </>
