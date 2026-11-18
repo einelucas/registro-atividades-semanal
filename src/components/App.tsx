@@ -733,16 +733,16 @@ export default function App() {
             </Stack>
           </header>
           <div className={page === "todo" ? "app-shell app-shell--todo" : "app-shell"}>
-            <aside className={page === "todo" ? "side side--todo" : "side"}>
+            <aside className="side" aria-label="Navegação principal">
               <div className="nav-label">ÁREA DE TRABALHO</div>
               {navEntries
                 .filter((n) => !n.manager || manager)
                 .map((n) => {
                   const Icon = sectionIcons[navEntries.indexOf(n)];
                   return (
+                    <Tooltip key={n.id} title={n.label} placement="right" arrow>
                     <Button
-                      key={n.id}
-                      title={n.label}
+                      aria-label={n.label}
                       onClick={() => navigate(n.id)}
                       fullWidth
                       startIcon={<Icon size={18} />}
@@ -754,8 +754,8 @@ export default function App() {
                         bgcolor: page === n.id ? "#eaf1fb" : "transparent",
                       }}
                     >
-                      {page === "todo" ? null : n.label}
                     </Button>
+                    </Tooltip>
                   );
                 })}
               <Divider sx={{ my: 2 }} />
