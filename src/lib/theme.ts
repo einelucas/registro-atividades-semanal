@@ -182,6 +182,10 @@ const themeOptions: ThemeOptions = {
           '&:active': {
             transform: 'scale(0.98)',
           },
+          '&.Mui-disabled': {
+            opacity: 0.45,
+            pointerEvents: 'none',
+          },
         },
         contained: {
           borderColor: 'transparent',
@@ -210,10 +214,6 @@ const themeOptions: ThemeOptions = {
         sizeLarge: {
           height: 48,
           paddingInline: 24,
-        },
-        disabled: {
-          opacity: 0.45,
-          pointerEvents: 'none',
         },
       },
     },
