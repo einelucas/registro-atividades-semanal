@@ -41,6 +41,7 @@ import {
   FilePlus,
   LayoutDashboard,
   List,
+  ListTodo,
   LogOut,
   MonitorPlay,
   Plus,
@@ -61,11 +62,13 @@ import type {
   ActivityStatus,
 } from "../lib/types";
 import { BarChart, DonutChart } from "./Charts";
+import TodoWorkspace from "./todo/TodoWorkspace";
 import { theme } from "../lib/theme";
-const sectionIcons = [FilePlus, List, LayoutDashboard, UsersRound, Settings];
-type Page = "register" | "mine" | "dashboard" | "all" | "settings";
+const sectionIcons = [FilePlus, ListTodo, List, LayoutDashboard, UsersRound, Settings];
+type Page = "register" | "todo" | "mine" | "dashboard" | "all" | "settings";
 const navEntries: { id: Page; label: string; manager?: boolean }[] = [
   { id: "register", label: "Registrar atividade" },
+  { id: "todo", label: "Tarefas" },
   { id: "mine", label: "Minhas atividades" },
   { id: "dashboard", label: "Visão gerencial", manager: true },
   { id: "all", label: "Registros da equipe", manager: true },
@@ -729,8 +732,8 @@ export default function App() {
               </Tooltip>
             </Stack>
           </header>
-          <div className="app-shell">
-            <aside className="side">
+          <div className={page === "todo" ? "app-shell app-shell--todo" : "app-shell"}>
+            <aside className={page === "todo" ? "side side--todo" : "side"}>
               <div className="nav-label">ÁREA DE TRABALHO</div>
               {navEntries
                 .filter((n) => !n.manager || manager)
@@ -739,6 +742,7 @@ export default function App() {
                   return (
                     <Button
                       key={n.id}
+                      title={n.label}
                       onClick={() => navigate(n.id)}
                       fullWidth
                       startIcon={<Icon size={18} />}
@@ -750,7 +754,7 @@ export default function App() {
                         bgcolor: page === n.id ? "#eaf1fb" : "transparent",
                       }}
                     >
-                      {n.label}
+                      {page === "todo" ? null : n.label}
                     </Button>
                   );
                 })}
@@ -760,6 +764,7 @@ export default function App() {
               </Typography>
             </aside>
             <main className="app-content">
+               {page === "todo" && <TodoWorkspace personName={current.name} units={data.units} categories={data.categories} onActivityChange={refresh} />}
               {page === "register" && (
                 <>
                   {headline(
@@ -1189,7 +1194,9 @@ export default function App() {
                     <Icon size={18} />
                     {n.id === "register"
                       ? "Registrar"
-                      : n.id === "mine"
+                      : n.id === "todo"
+                         ? "Tarefas"
+                       : n.id === "mine"
                         ? "Minhas"
                         : n.id === "dashboard"
                           ? "Gestão"
