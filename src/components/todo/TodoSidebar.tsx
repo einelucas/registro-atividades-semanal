@@ -6,6 +6,7 @@ import {
   Menu as MenuIcon, MoreHorizontal, Plus, Search, Settings2, Star, Sun, X,
 } from 'lucide-react';
 import type { TodoList, TodoTask } from './types';
+import { todayISO } from './types';
 
 type Props = {
   view: string;
@@ -34,7 +35,7 @@ export function TodoSidebar({
   view, setView, lists, tasks, search, setSearch, onNewList, onEditList,
   onSettings, personName, mobileOpen, onClose,
 }: Props) {
-  const today = new Date().toLocaleDateString('en-CA');
+  const today = todayISO();
   const activeTasks = tasks.filter(task => !task.completedAt);
   const count = (id: string) => {
     if (id === 'day') return activeTasks.filter(t => t.myDay === today).length;
