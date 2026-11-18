@@ -3,7 +3,7 @@ import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
 import '../styles/globals.css';
 
 export const metadata: Metadata = {
-  title: 'INPASA • Projetos & Arquitetura',
+  title: 'INPASA • Registro semanal',
   description: 'Registro de atividades, gestão e acompanhamento de projetos',
 };
 
