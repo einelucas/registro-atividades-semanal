@@ -741,20 +741,21 @@ export default function App() {
                   const Icon = sectionIcons[navEntries.indexOf(n)];
                   return (
                     <Tooltip key={n.id} title={n.label} placement="right" arrow>
-                    <Button
-                      aria-label={n.label}
-                      onClick={() => navigate(n.id)}
-                      fullWidth
-                      startIcon={<Icon size={18} />}
-                      sx={{
-                        justifyContent: "flex-start",
-                        p: 1.5,
-                        mb: 0.3,
-                        color: page === n.id ? "#173c75" : "#64738b",
-                        bgcolor: page === n.id ? "#eaf1fb" : "transparent",
-                      }}
-                    >
-                    </Button>
+                      <Button
+                        aria-label={n.label}
+                        aria-current={page === n.id ? "page" : undefined}
+                        onClick={() => navigate(n.id)}
+                        fullWidth
+                        sx={{
+                          justifyContent: "center",
+                          p: 1.5,
+                          mb: 0.3,
+                          color: page === n.id ? "#173c75" : "#64738b",
+                          bgcolor: page === n.id ? "#eaf1fb" : "transparent",
+                        }}
+                      >
+                        <Icon size={19} />
+                      </Button>
                     </Tooltip>
                   );
                 })}
