@@ -1,0 +1,9 @@
+node_modules
+.next
+powerapps/node_modules
+powerapps/dist
+.env*
+!.env.example
+!powerapps/.env.example
+*.tsbuildinfo
+.DS_Store
