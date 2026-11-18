@@ -312,24 +312,79 @@ button {
 }
 
 
-/* App shell compacto para a aba de tarefas, preservando acesso às demais abas. */
+/* Navegação lateral compacta e fixa durante a rolagem em todas as abas. */
+.app-shell {
+  max-width: none;
+  width: 100%;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px clamp(12px, 2vw, 28px) 40px;
+}
+.app-shell .side {
+  position: sticky;
+  top: 98px;
+  max-height: calc(100dvh - 114px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 6px;
+  border-radius: 12px;
+}
+.app-shell .side .nav-label,
+.app-shell .side .hint,
+.app-shell .side .MuiDivider-root {
+  display: none;
+}
+.app-shell .side .MuiButton-root {
+  justify-content: center;
+  padding: 13px 7px;
+  min-width: 0;
+}
+.app-shell .side .MuiButton-startIcon { margin: 0; }
+.app-shell .app-content {
+  width: 100%;
+  max-width: 1560px;
+  min-width: 0;
+}
+.app-shell:not(.app-shell--todo) .overview-grid {
+  grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+}
+
+/* A aba Tarefas ocupa a altura útil da janela; apenas as listas rolam. */
 .app-shell--todo {
-  max-width:none;
-  grid-template-columns:70px minmax(0,1fr);
-  padding:12px 18px 36px;
-  gap:12px;
+  max-width: none;
+  height: calc(100dvh - 83px);
+  min-height: 0;
+  grid-template-columns: 72px minmax(0, 1fr);
+  padding: 10px 16px;
+  gap: 12px;
+  overflow: hidden;
 }
-.app-shell--todo .side--todo {padding:8px 6px;border-radius:12px;top:96px;}
-.app-shell--todo .side--todo .nav-label,
-.app-shell--todo .side--todo .hint,
-.app-shell--todo .side--todo .MuiDivider-root{display:none}
-.app-shell--todo .side--todo .MuiButton-root{
-  justify-content:center;
-  padding:13px 7px;
-  min-width:0;
+.app-shell--todo .app-content {
+  max-width: none;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
-.app-shell--todo .side--todo .MuiButton-startIcon{margin:0}
-@media(max-width:720px){
-  .app-shell--todo{display:block;padding:8px 8px 95px}
-  .app-shell--todo .side--todo{display:none}
+@media (min-width: 721px) and (max-width: 1150px) {
+  .app-shell:not(.app-shell--todo) .overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 720px) {
+  .app-shell {
+    display: block;
+    padding: 18px 12px 95px;
+  }
+  .app-shell .side { display: none; }
+  .app-shell .app-content { max-width: none; }
+  .app-shell:not(.app-shell--todo) .overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app-shell--todo {
+    display: block;
+    height: calc(100dvh - 66px - 70px - env(safe-area-inset-bottom));
+    min-height: 0;
+    padding: 8px 8px 6px;
+  }
+  .app-shell--todo .app-content { height: 100%; }
 }

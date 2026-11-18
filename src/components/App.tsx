@@ -733,29 +733,30 @@ export default function App() {
             </Stack>
           </header>
           <div className={page === "todo" ? "app-shell app-shell--todo" : "app-shell"}>
-            <aside className={page === "todo" ? "side side--todo" : "side"}>
+            <aside className="side" aria-label="Navegação principal">
               <div className="nav-label">ÁREA DE TRABALHO</div>
               {navEntries
                 .filter((n) => !n.manager || manager)
                 .map((n) => {
                   const Icon = sectionIcons[navEntries.indexOf(n)];
                   return (
-                    <Button
-                      key={n.id}
-                      title={n.label}
-                      onClick={() => navigate(n.id)}
-                      fullWidth
-                      startIcon={<Icon size={18} />}
-                      sx={{
-                        justifyContent: "flex-start",
-                        p: 1.5,
-                        mb: 0.3,
-                        color: page === n.id ? "#173c75" : "#64738b",
-                        bgcolor: page === n.id ? "#eaf1fb" : "transparent",
-                      }}
-                    >
-                      {page === "todo" ? null : n.label}
-                    </Button>
+                    <Tooltip key={n.id} title={n.label} placement="right" arrow>
+                      <Button
+                        aria-label={n.label}
+                        aria-current={page === n.id ? "page" : undefined}
+                        onClick={() => navigate(n.id)}
+                        fullWidth
+                        sx={{
+                          justifyContent: "center",
+                          p: 1.5,
+                          mb: 0.3,
+                          color: page === n.id ? "#173c75" : "#64738b",
+                          bgcolor: page === n.id ? "#eaf1fb" : "transparent",
+                        }}
+                      >
+                        <Icon size={19} />
+                      </Button>
+                    </Tooltip>
                   );
                 })}
               <Divider sx={{ my: 2 }} />

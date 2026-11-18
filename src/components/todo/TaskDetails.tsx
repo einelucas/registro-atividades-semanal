@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Divider, FormControl, IconButton, MenuItem, Select, TextField, Tooltip, Typography,
+  Divider, FormControl, IconButton, MenuItem, Select, TextField, Tooltip,
 } from '@mui/material';
 import {
   AlarmClock, CalendarDays, Check, ChevronRight, ListChecks, Plus, Repeat2,
@@ -35,7 +35,9 @@ export function TaskDetails({
 }:Props) {
   const [newStep,setNewStep]=useState('');
   const [note,setNote]=useState(task.note);
+  const [taskTitle,setTaskTitle]=useState(task.title);
   useEffect(()=>{setNote(task.note);setNewStep('');},[task.id,task.note]);
+  useEffect(()=>{setTaskTitle(task.title);},[task.id,task.title]);
   const completed=!!task.completedAt;
   return (
     <aside className="todo-details" aria-label="Detalhes da tarefa">
@@ -43,7 +45,34 @@ export function TaskDetails({
         <section className="todo-details-card">
           <div className="todo-details-title">
             <button type="button" className={'todo-circle'+(completed?' is-checked':'')} onClick={onToggle} disabled={busy} aria-label={completed?'Reabrir tarefa':'Concluir tarefa'}>{completed&&<Check size={15} strokeWidth={3}/>}</button>
-            <Typography sx={{flex:1,fontSize:14,fontWeight:600,textDecoration:completed?'line-through':'none',wordBreak:'break-word'}}>{task.title}</Typography>
+            <input
+              className={'todo-details-task-name'+(completed?' is-done':'')}
+              aria-label="Nome da tarefa"
+              title="Clique para renomear a tarefa"
+              value={taskTitle}
+              maxLength={300}
+              disabled={busy}
+              onChange={event=>setTaskTitle(event.target.value)}
+              onBlur={event=>{
+                const value=event.currentTarget.value.trim();
+                if(value && value!==task.title){
+                  setTaskTitle(value);
+                  onPatch({title:value});
+                }else{
+                  setTaskTitle(task.title);
+                }
+              }}
+              onKeyDown={event=>{
+                if(event.key==='Enter'){
+                  event.preventDefault();
+                  event.currentTarget.blur();
+                }else if(event.key==='Escape'){
+                  event.currentTarget.value=task.title;
+                  setTaskTitle(task.title);
+                  event.currentTarget.blur();
+                }
+              }}
+            />
             <Tooltip title={task.important?'Remover importância':'Marcar como importante'}><IconButton onClick={()=>onPatch({important:!task.important})} disabled={busy} size="small"><Star size={18} color={task.important?'#d29a19':'#768296'} fill={task.important?'#d29a19':'none'}/></IconButton></Tooltip>
           </div>
           <div className="todo-steps">

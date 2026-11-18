@@ -133,7 +133,7 @@ export default function TodoWorkspace({personName,units,categories,onActivityCha
   };
   const addTask=async(title:string,important:boolean)=>{
     const listId=view.startsWith('list:')?view.slice(5):null;
-    const result=await mutate('POST',{kind:'task',title,important,listId,myDay:view==='day'?todayISO():null});
+    const result=await mutate('POST',{kind:'task',title,important,listId,myDay:view==='day'?todayISO():null,dueDate:view==='planned'?todayISO():null});
     if(result)setSelectedId(result.id);
   };
   const patchTask=async(id:string,patch:Record<string,unknown>)=>{
