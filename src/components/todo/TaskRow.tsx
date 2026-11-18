@@ -2,7 +2,7 @@
 import React from 'react';
 import { CalendarDays, Check, ListChecks, Star, Sun } from 'lucide-react';
 import type { TodoTask, TodoStep } from './types';
-import { niceDate } from './types';
+import { niceDate, todayISO } from './types';
 
 type Props = {
   task: TodoTask;
@@ -29,7 +29,7 @@ export function TaskRow({task,steps,selected,listName,onSelect,onToggle,onImport
         <span className="todo-task-meta">
           {listName && <span>{listName}</span>}
           {task.myDay && <span><Sun size={12}/> Meu Dia</span>}
-          {task.dueDate && <span className={task.dueDate<new Date().toLocaleDateString('en-CA')&&!checked?'is-overdue':''}><CalendarDays size={12}/>{niceDate(task.dueDate)}</span>}
+          {task.dueDate && <span className={task.dueDate<todayISO()&&!checked?'is-overdue':''}><CalendarDays size={12}/>{niceDate(task.dueDate)}</span>}
           {total>0 && <span><ListChecks size={12}/>{done} de {total}</span>}
           {task.note && <span>Observação</span>}
           {checked && !task.activityId && <span className="todo-not-synced">Registro semanal pendente</span>}
