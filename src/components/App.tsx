@@ -14,6 +14,7 @@ import {
   Divider,
   FormControl,
   IconButton,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Select,
@@ -33,13 +34,20 @@ import {
   Tooltip,
 } from "@mui/material";
 import {
+  Activity as ActivityIcon,
   BookOpen,
+  Building2,
   CheckCheck,
+  ClipboardCheck,
   Clock,
   Download,
   Edit3,
   FilePlus,
+  FileStack,
+  FileText,
+  GraduationCap,
   LayoutDashboard,
+  Lightbulb,
   List,
   ListTodo,
   LogOut,
@@ -50,7 +58,7 @@ import {
   Trash2,
   UserRound,
   UsersRound,
-  Lightbulb,
+  Wallet,
   X,
 } from "lucide-react";
 import type {
@@ -64,6 +72,24 @@ import { BarChart, DonutChart } from "./Charts";
 import TodoWorkspace from "./todo/TodoWorkspace";
 import { theme } from "../lib/theme";
 const sectionIcons = [FilePlus, ListTodo, List, LayoutDashboard, UsersRound, Settings];
+
+function categoryIcon(name: string) {
+  const category = name.toLocaleUpperCase("pt-BR");
+
+  if (/^(PROJETO\b|BRIEFING|ESTUDO)/.test(category)) return BookOpen;
+  if (/^(VISITA|MEDIÇÃO)/.test(category)) return Building2;
+  if (/^(LEVANTAMENTO|EQUALIZAÇÃO)/.test(category)) return ActivityIcon;
+  if (/^(TREINAMENTOS|PALESTRAS)/.test(category)) return GraduationCap;
+  if (/^(APOIO|CONTATO|REUNIÃO|ORIENTAÇÃO)/.test(category)) return UsersRound;
+  if (/ORÇAMENTOS|PAGAMENTOS/.test(category)) return Wallet;
+  if (category === "REVISÃO") return CheckCheck;
+  if (category === "OUTROS") return Plus;
+  if (/APROVA|PENDÊNCIAS/.test(category)) return ClipboardCheck;
+  if (/CONTRAT|REQUISIÇÕES|MATERIAIS/.test(category)) return FileStack;
+
+  return FileText;
+}
+
 type Page = "register" | "todo" | "mine" | "dashboard" | "all" | "settings";
 const navEntries: { id: Page; label: string; manager?: boolean }[] = [
   { id: "register", label: "Registrar atividade" },
@@ -307,6 +333,8 @@ export default function App() {
     editing && !categoryOptions.some((category) => category.id === editing.categoryId)
       ? [...categoryOptions, { id: editing.categoryId, name: editing.category }]
       : categoryOptions;
+  const selectedCategory = editableCategories.find((category) => category.id === categoryId) ?? null;
+  const SelectedCategoryIcon = selectedCategory ? categoryIcon(selectedCategory.name) : null;
   const resetForm = () => {
     setEditing(null);
     setUnitId(data?.units[0]?.id || "");
@@ -797,11 +825,36 @@ export default function App() {
                           options={editableCategories}
                           getOptionLabel={(category) => category.name}
                           isOptionEqualToValue={(option, value) => option.id === value.id}
-                          value={editableCategories.find((category) => category.id === categoryId) ?? null}
+                          value={selectedCategory}
                           onChange={(_, category) => setCategoryId(category?.id ?? "")}
                           noOptionsText="Nenhum tipo de atividade encontrado"
+                          renderOption={(props, category) => {
+                            const { key, ...optionProps } = props;
+                            const Icon = categoryIcon(category.name);
+
+                            return (
+                              <li key={key} {...optionProps}>
+                                <Box component="span" sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+                                  <Icon size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
+                                  {category.name}
+                                </Box>
+                              </li>
+                            );
+                          }}
                           renderInput={(params) => (
-                            <TextField {...params} label="Tipo de atividade" required />
+                            <TextField
+                              {...params}
+                              label="Tipo de atividade"
+                              required
+                              InputProps={{
+                                ...params.InputProps,
+                                startAdornment: SelectedCategoryIcon && (
+                                  <InputAdornment position="start">
+                                    <SelectedCategoryIcon size={18} aria-hidden="true" />
+                                  </InputAdornment>
+                                ),
+                              }}
+                            />
                           )}
                         />
                         <Divider sx={{ my: 3 }} />
