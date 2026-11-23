@@ -10,7 +10,11 @@ export async function POST(req:NextRequest){
     const p=payload.data;
     const id=actorId(user,p.personId||null);
     if(user.demo) await assertDemoActor(id);
-    const result=await pool().query('INSERT INTO activities(user_id,unit_id,category_id,activity_date,description,status) VALUES($1,$2,$3,$4,$5,$6) RETURNING id::text',[id,p.unitId,p.categoryId,p.date,p.description,p.status]);
+    const result=await pool().query(
+      'INSERT INTO activities(user_id,unit_id,category_id,activity_date,description,status) SELECT $1,$2,c.id,$4,$5,$6 FROM categories c WHERE c.id=$3 AND c.active RETURNING id::text',
+      [id,p.unitId,p.categoryId,p.date,p.description,p.status],
+    );
+    if(!result.rowCount) throw new ApiError(400,'Selecione um tipo de atividade ativo.');
     return NextResponse.json({id:result.rows[0].id},{status:201});
   }catch(e){return jsonError(e);}
 }

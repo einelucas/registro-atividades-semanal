@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ThemeProvider } from "@mui/material/styles";
 import {
   Alert,
+  Autocomplete,
   Avatar,
   Box,
   Button,
@@ -32,7 +33,6 @@ import {
   Tooltip,
 } from "@mui/material";
 import {
-  Activity as ActivityIcon,
   BookOpen,
   CheckCheck,
   Clock,
@@ -50,7 +50,6 @@ import {
   Trash2,
   UserRound,
   UsersRound,
-  Building2,
   Lightbulb,
   X,
 } from "lucide-react";
@@ -303,10 +302,15 @@ export default function App() {
       ),
     [filtered, search],
   );
+  const categoryOptions: Option[] = data?.categories ?? [];
+  const editableCategories =
+    editing && !categoryOptions.some((category) => category.id === editing.categoryId)
+      ? [...categoryOptions, { id: editing.categoryId, name: editing.category }]
+      : categoryOptions;
   const resetForm = () => {
     setEditing(null);
     setUnitId(data?.units[0]?.id || "");
-    setCategoryId(data?.categories[0]?.id || "");
+    setCategoryId("");
     setDate(today());
     setDescription("");
     setStatus("DONE");
@@ -323,7 +327,6 @@ export default function App() {
   useEffect(() => {
     if (data) {
       setUnitId((v) => v || data.units[0]?.id || "");
-      setCategoryId((v) => v || data.categories[0]?.id || "");
     }
   }, [data]);
   const saveActivity = async (e: React.FormEvent) => {
@@ -347,8 +350,18 @@ export default function App() {
       editing ? "Atividade atualizada." : "Atividade registrada.",
     );
   };
-  const repeat = (r: Activity) =>
-    action(
+  const repeat = (r: Activity) => {
+    if (!categoryOptions.some((category) => category.id === r.categoryId)) {
+      setEditing(null);
+      setUnitId(r.unitId);
+      setCategoryId("");
+      setDate(today());
+      setDescription(r.description);
+      setStatus(r.status);
+      setPage("register");
+      return;
+    }
+    return action(
       () =>
         request("/activities", {
           method: "POST",
@@ -363,6 +376,7 @@ export default function App() {
         }),
       "Atividade repetida para hoje.",
     );
+  };
   const remove = (r: Activity) => {
     if (!confirm(`Excluir a atividade "${r.description}"?`)) return;
     action(
@@ -778,39 +792,18 @@ export default function App() {
                         <Typography fontWeight={800} sx={{ mb: 2 }}>
                           1. O que você fez?
                         </Typography>
-                        <div className="form-categories">
-                          {data.categories.map((c, i) => {
-                            const icons = [
-                              BookOpen,
-                              CheckCheck,
-                              UsersRound,
-                              Building2,
-                              ActivityIcon,
-                              Plus,
-                            ];
-                            const Icon = icons[i % icons.length];
-                            return (
-                              <Button
-                                key={c.id}
-                                type="button"
-                                variant={
-                                  categoryId === c.id ? "contained" : "outlined"
-                                }
-                                onClick={() => setCategoryId(c.id)}
-                                sx={{
-                                  height: 95,
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: 1,
-                                  fontSize: 12,
-                                }}
-                              >
-                                <Icon size={23} />
-                                {c.name}
-                              </Button>
-                            );
-                          })}
-                        </div>
+                        <Autocomplete
+                          fullWidth
+                          options={editableCategories}
+                          getOptionLabel={(category) => category.name}
+                          isOptionEqualToValue={(option, value) => option.id === value.id}
+                          value={editableCategories.find((category) => category.id === categoryId) ?? null}
+                          onChange={(_, category) => setCategoryId(category?.id ?? "")}
+                          noOptionsText="Nenhum tipo de atividade encontrado"
+                          renderInput={(params) => (
+                            <TextField {...params} label="Tipo de atividade" required />
+                          )}
+                        />
                         <Divider sx={{ my: 3 }} />
                         <Typography fontWeight={800} sx={{ mb: 2 }}>
                           2. Onde e quando?

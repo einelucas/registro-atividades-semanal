@@ -29,6 +29,8 @@ Projeto Neon existente: `inpasa-projetos-arquitetura` na organização Lucas F N
 
 Para redefinir a senha em sessão autenticada, use POST /api/auth/password com JSON `{"currentPassword":"...","newPassword":"..."}` (12 ou mais caracteres). O cadastro público não concede privilégios de administrador.
 
+Em bancos existentes, aplique `db/migrations/003_activity_categories.sql` após a migração `002_todo_workspace.sql` para ativar os 35 tipos de atividade do setor. A migração desativa as categorias anteriores e mantém os vínculos no histórico. Quem usava uma categoria desativada no registro automático de tarefas deverá escolher um novo tipo na aba Tarefas.
+
 ## Observação
 
 Os dados em `app_users` sem senha são perfis antigos de demonstração; estão excluídos das consultas de usuários e atividades da interface autenticada. Revise-os antes de uma migração real dos registros históricos.
