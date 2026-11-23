@@ -4,9 +4,11 @@ import {
   Divider, FormControl, IconButton, MenuItem, Select, TextField, Tooltip,
 } from '@mui/material';
 import {
-  AlarmClock, CalendarDays, Check, ChevronRight, ListChecks, Plus, Repeat2,
+  AlarmClock, CalendarDays, Check, ListChecks, Plus, Repeat2,
   Star, Sun, Trash2, X,
 } from 'lucide-react';
+import type { Option } from '@/lib/types';
+import { TaskActivityFields } from './TaskActivityFields';
 import type { TodoList, TodoStep, TodoTask } from './types';
 import { todayISO } from './types';
 
@@ -22,7 +24,9 @@ type Props = {
   onPatchStep: (id:string,patch:Record<string,unknown>) => void;
   onDeleteStep: (id:string) => void;
   onDelete: () => void;
-  onSettings: () => void;
+  units: Option[];
+  categories: Option[];
+  autoRegister: boolean;
 };
 const inputDateTime = (value: string | null) => {
   if (!value) return '';
@@ -31,7 +35,7 @@ const inputDateTime = (value: string | null) => {
   return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
 };
 export function TaskDetails({
-  task,steps,lists,busy,onClose,onPatch,onToggle,onAddStep,onPatchStep,onDeleteStep,onDelete,onSettings,
+  task,steps,lists,busy,onClose,onPatch,onToggle,onAddStep,onPatchStep,onDeleteStep,onDelete,units,categories,autoRegister,
 }:Props) {
   const [newStep,setNewStep]=useState('');
   const [note,setNote]=useState(task.note);
@@ -39,6 +43,10 @@ export function TaskDetails({
   useEffect(()=>{setNote(task.note);setNewStep('');},[task.id,task.note]);
   useEffect(()=>{setTaskTitle(task.title);},[task.id,task.title]);
   const completed=!!task.completedAt;
+  const archivedUnit = task.activityId && task.unitId && task.unitName && !units.some(unit=>unit.id===task.unitId)
+    ? {id:task.unitId,name:task.unitName} : undefined;
+  const archivedCategory = task.activityId && task.categoryId && task.categoryName && !categories.some(category=>category.id===task.categoryId)
+    ? {id:task.categoryId,name:task.categoryName} : undefined;
   return (
     <aside className="todo-details" aria-label="Detalhes da tarefa">
       <div className="todo-details-scroll">
@@ -95,6 +103,11 @@ export function TaskDetails({
             <Sun size={19}/><span>{task.myDay===todayISO()?'Adicionada a Meu Dia':'Adicionar a Meu Dia'}</span>{task.myDay===todayISO()&&<X size={16}/>}
           </button>
         </section>
+        <section className="todo-details-card todo-details-options" aria-label="Registro da atividade">
+          <TaskActivityFields units={units} categories={categories} unitId={task.unitId} categoryId={task.categoryId}
+            onUnitChange={unitId=>onPatch({unitId})} onCategoryChange={categoryId=>onPatch({categoryId})}
+            disabled={busy} archivedUnit={archivedUnit} archivedCategory={archivedCategory} disableCategoryClear={!!task.activityId}/>
+        </section>
         <section className="todo-details-card todo-details-options">
           <label><CalendarDays size={17}/><span>Data de vencimento</span></label>
           <TextField size="small" type="date" fullWidth value={task.dueDate||''} onChange={event=>onPatch({dueDate:event.target.value||null})} slotProps={{htmlInput:{'aria-label':'Data de vencimento'}}}/>
@@ -123,9 +136,9 @@ export function TaskDetails({
         <section className="todo-details-card todo-details-notes">
           <textarea value={note} onChange={event=>setNote(event.target.value)} onBlur={()=>{if(note!==task.note)onPatch({note});}} maxLength={10000} rows={4} placeholder="Adicionar observação" aria-label="Observação"/>
         </section>
-        {completed && <section className="todo-details-card todo-sync-note">
+        {completed && <section className={'todo-details-card todo-sync-note'+(task.activityId?' is-registered':'')}>
           {task.activityId ? <><Check size={16}/> Registrada em Minhas Atividades.</> :
-            <button type="button" onClick={onSettings}>Concluída, mas ainda não registrada. Configurar integração <ChevronRight size={15}/></button>}
+            (autoRegister ? 'Selecione uma unidade e uma categoria ativas para registrar esta tarefa.' : 'Registro automático desativado.')}
         </section>}
       </div>
       <footer className="todo-details-footer">

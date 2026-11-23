@@ -7,6 +7,10 @@ export type TodoList = {
 export type TodoTask = {
   id: string;
   listId: string | null;
+  unitId: string | null;
+  categoryId: string | null;
+  unitName: string | null;
+  categoryName: string | null;
   title: string;
   note: string;
   important: boolean;
@@ -26,8 +30,6 @@ export type TodoStep = {
   position: number;
 };
 export type TodoPreferences = {
-  unitId: string | null;
-  categoryId: string | null;
   autoRegister: boolean;
 };
 export type TodoState = {

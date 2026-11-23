@@ -2,12 +2,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogTitle, Divider, FormControlLabel, IconButton, Menu, MenuItem, Snackbar,
+  DialogTitle, FormControlLabel, IconButton, Menu, MenuItem, Snackbar,
   Switch, TextField, Tooltip, Typography,
 } from '@mui/material';
 import {
   ArrowDownAZ, ArrowUpDown, CalendarDays, CheckCircle2, ChevronDown, ChevronUp,
-  ClipboardCheck, ListTodo, Menu as MenuIcon, MoreHorizontal, SlidersHorizontal,
+  ClipboardCheck, ListTodo, Menu as MenuIcon, SlidersHorizontal,
   Star, Sun,
 } from 'lucide-react';
 import type { Option } from '@/lib/types';
@@ -27,7 +27,7 @@ type Props = {
 };
 const EMPTY: TodoState = {
   lists: [], tasks: [], steps: [],
-  preferences: { unitId:null, categoryId:null, autoRegister:true },
+  preferences: { autoRegister:true },
 };
 const titles:Record<string,string> = {
   day:'Meu Dia',important:'Importante',planned:'Planejado',
@@ -54,8 +54,6 @@ export default function TodoWorkspace({personName,units,categories,onActivityCha
   const [listName,setListName]=useState('');
   const [listColor,setListColor]=useState(colors[0]);
   const [settingsOpen,setSettingsOpen]=useState(false);
-  const [unitId,setUnitId]=useState('');
-  const [categoryId,setCategoryId]=useState('');
   const [autoRegister,setAutoRegister]=useState(true);
 
   const request=useCallback(async(method:'GET'|'POST'|'PATCH'|'DELETE',body?:Record<string,unknown>)=>{
@@ -84,9 +82,8 @@ export default function TodoWorkspace({personName,units,categories,onActivityCha
       await reload();
       if(activityChanged) await onActivityChange();
       if(response.pending){
-        setNotice('Tarefa concluída. Configure a unidade e a categoria para registrá-la em Minhas Atividades.');
-        openSettings();
-      } else if (response.linked && body.completed === true) {
+        setNotice('Tarefa concluída. Você pode atualizar a unidade e a categoria nos detalhes da tarefa.');
+      } else if (response.registered) {
         setNotice('Tarefa concluída e adicionada a Minhas Atividades.');
       }
       return response;
@@ -96,8 +93,6 @@ export default function TodoWorkspace({personName,units,categories,onActivityCha
     }finally{setBusy(false);}
   };
   const openSettings=()=>{
-    setUnitId(state.preferences.unitId||'');
-    setCategoryId(state.preferences.categoryId||'');
     setAutoRegister(state.preferences.autoRegister);
     setSettingsOpen(true);
   };
@@ -121,23 +116,20 @@ export default function TodoWorkspace({personName,units,categories,onActivityCha
     if(result){setListDialog(false);setView('all');setSelectedId(null);}
   };
   const saveSettings=async()=>{
-    if(autoRegister && (!unitId||!categoryId)){
-      setError('Selecione a unidade e a categoria para ativar o registro automático.');
-      return;
-    }
-    const result=await mutate('PATCH',{kind:'preferences',unitId:unitId||null,categoryId:categoryId||null,autoRegister},true);
+    const result=await mutate('PATCH',{kind:'preferences',autoRegister},true);
     if(result){
       setSettingsOpen(false);
       setNotice(result.linked>0?'Configurações salvas. '+result.linked+' tarefas concluídas foram registradas.':'Configurações salvas.');
     }
   };
-  const addTask=async(title:string,important:boolean)=>{
+  const addTask=async(task:Pick<TodoTask,'title'|'important'|'unitId'|'categoryId'>)=>{
     const listId=view.startsWith('list:')?view.slice(5):null;
-    const result=await mutate('POST',{kind:'task',title,important,listId,myDay:view==='day'?todayISO():null,dueDate:view==='planned'?todayISO():null});
+    const result=await mutate('POST',{kind:'task',...task,listId,myDay:view==='day'?todayISO():null,dueDate:view==='planned'?todayISO():null});
     if(result)setSelectedId(result.id);
+    return !!result;
   };
   const patchTask=async(id:string,patch:Record<string,unknown>)=>{
-    const result=await mutate('PATCH',{kind:'task',id,...patch},'completed' in patch);
+    const result=await mutate('PATCH',{kind:'task',id,...patch},['completed','title','unitId','categoryId'].some(field=>field in patch));
     return result;
   };
   const toggleTask=(task:TodoTask)=>patchTask(task.id,{completed:!task.completedAt});
@@ -170,7 +162,7 @@ export default function TodoWorkspace({personName,units,categories,onActivityCha
   },[view,search,state.tasks,listId,sortMode]);
   const pending=visible.filter(task=>!task.completedAt);
   const completed=visible.filter(task=>!!task.completedAt);
-  const syncPending=state.tasks.filter(task=>task.completedAt&&!task.activityId).length;
+  const syncPending=state.preferences.autoRegister ? state.tasks.filter(task=>task.completedAt&&!task.activityId) : [];
   const title=selectedList?.name||titles[view]||'Tarefas';
   const headingIcon=view==='day'?<Sun size={30}/>:view==='important'?<Star size={28}/>:view==='planned'?<CalendarDays size={28}/>:view==='completed'?<CheckCircle2 size={28}/>:<ListTodo size={28}/>;
   const stepsFor=(id:string)=>state.steps.filter(step=>step.taskId===id);
@@ -200,7 +192,7 @@ export default function TodoWorkspace({personName,units,categories,onActivityCha
             <Tooltip title="Configurar registro semanal"><IconButton sx={{color:'inherit'}} aria-label="Configurar" onClick={openSettings}><SlidersHorizontal size={19}/></IconButton></Tooltip>
           </div>
         </div>
-        {syncPending>0&&<button type="button" className="todo-sync-banner" onClick={openSettings}><ClipboardCheck size={16}/>{syncPending} tarefa(s) concluída(s) aguardando configuração do registro semanal.</button>}
+        {syncPending.length>0&&<button type="button" className="todo-sync-banner" onClick={()=>setSelectedId(syncPending[0].id)}><ClipboardCheck size={16}/>{syncPending.length} tarefa(s) concluída(s) aguardando unidade ou categoria.</button>}
         <div className="todo-task-scroll">
           {view==='completed'?(
             <>
@@ -224,7 +216,7 @@ export default function TodoWorkspace({personName,units,categories,onActivityCha
             <span>{view==='day'?'Adicione tarefas para planejar seu dia.':view==='completed'?'As tarefas concluídas aparecerão aqui.':'Suas tarefas aparecerão nesta lista.'}</span>
           </div>}
         </div>
-        {view!=='completed'&&view!=='search'&&<TaskComposer busy={busy} onAdd={addTask}/>}
+        {view!=='completed'&&view!=='search'&&<TaskComposer busy={busy} onAdd={addTask} units={units} categories={categories} autoRegister={state.preferences.autoRegister}/>}
         <div className="todo-main-bottom">{pending.length} {pending.length===1?'tarefa pendente':'tarefas pendentes'}</div>
       </section>
       {selected&&<TaskDetails
@@ -235,7 +227,7 @@ export default function TodoWorkspace({personName,units,categories,onActivityCha
         onPatchStep={(id,patch)=>{void mutate('PATCH',{kind:'step',id,...patch});}}
         onDeleteStep={id=>{void mutate('DELETE',{kind:'step',id});}}
         onDelete={()=>{void deleteTask(selected);}}
-        onSettings={openSettings}
+        units={units} categories={categories} autoRegister={state.preferences.autoRegister}
       />}
       <Dialog open={listDialog} onClose={()=>!busy&&setListDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>{editingList?'Editar lista':'Nova lista'}</DialogTitle>
@@ -251,20 +243,9 @@ export default function TodoWorkspace({personName,units,categories,onActivityCha
         <DialogTitle>Integração com Minhas Atividades</DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2" sx={{mb:2,color:'text.secondary'}}>
-            Tarefas concluídas são registradas no histórico semanal com a unidade e a categoria definidas abaixo. Nenhum serviço da Microsoft é utilizado.
+            Cada tarefa usa a unidade e a categoria selecionadas na sua criação ou nos detalhes.
           </Typography>
           <FormControlLabel control={<Switch checked={autoRegister} onChange={e=>setAutoRegister(e.target.checked)}/>} label="Registrar automaticamente ao concluir"/>
-          <Box sx={{display:'grid',gridTemplateColumns:{xs:'1fr',sm:'1fr 1fr'},gap:2,mt:2}}>
-            <TextField size="small" select label="Unidade" value={unitId} onChange={e=>setUnitId(e.target.value)} fullWidth>
-              <MenuItem value="">Selecione uma unidade</MenuItem>
-              {units.map(unit=><MenuItem key={unit.id} value={unit.id}>{unit.name}</MenuItem>)}
-            </TextField>
-            <TextField size="small" select label="Categoria" value={categoryId} onChange={e=>setCategoryId(e.target.value)} fullWidth>
-              <MenuItem value="">Selecione uma categoria</MenuItem>
-              {categories.map(category=><MenuItem key={category.id} value={category.id}>{category.name}</MenuItem>)}
-            </TextField>
-          </Box>
-          {syncPending>0&&<Alert severity="info" sx={{mt:2}}>{syncPending} tarefa(s) já concluída(s) serão incluídas em Minhas Atividades assim que você salvar essas configurações com o registro automático ativado.</Alert>}
           <Typography variant="caption" color="text.secondary" sx={{display:'block',mt:2}}>Ao reabrir uma tarefa, o registro automático correspondente é removido. Ao excluir uma tarefa, a atividade registrada permanece no histórico.</Typography>
         </DialogContent>
         <DialogActions><Button onClick={()=>setSettingsOpen(false)}>Cancelar</Button><Button variant="contained" disabled={busy} onClick={saveSettings}>Salvar configurações</Button></DialogActions>

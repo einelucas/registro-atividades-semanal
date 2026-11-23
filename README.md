@@ -29,7 +29,7 @@ Projeto Neon existente: `inpasa-projetos-arquitetura` na organização Lucas F N
 
 Para redefinir a senha em sessão autenticada, use POST /api/auth/password com JSON `{"currentPassword":"...","newPassword":"..."}` (12 ou mais caracteres). O cadastro público não concede privilégios de administrador.
 
-Em bancos existentes, aplique `db/migrations/003_activity_categories.sql` após a migração `002_todo_workspace.sql` para ativar os 35 tipos de atividade do setor. A migração desativa as categorias anteriores e mantém os vínculos no histórico. Quem usava uma categoria desativada no registro automático de tarefas deverá escolher um novo tipo na aba Tarefas.
+Em bancos existentes, aplique `db/migrations/003_activity_categories.sql` após a migração `002_todo_workspace.sql` para ativar os 35 tipos de atividade do setor. A migração desativa as categorias anteriores e mantém os vínculos no histórico. Aplique em seguida `db/migrations/004_todo_task_activity_fields.sql` para armazenar unidade e categoria em cada tarefa. Tarefas já registradas recebem os valores do histórico. Para registrar uma tarefa antiga ainda sem vínculo, preencha esses campos em seus detalhes.
 
 ## Observação
 
