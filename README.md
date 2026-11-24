@@ -7,7 +7,7 @@ Aplicativo standalone com Next.js 16, React 19, MUI, Lucide, ApexCharts e Postgr
 - Login e cadastro por nome, e-mail e senha (mínimo de 12 caracteres).
 - Sessões aleatórias persistidas como hashes SHA-256 no Neon, com cookie HttpOnly, SameSite=Lax, Secure em produção e expiração de 7 dias.
 - Senhas usando scrypt com salt aleatório, sem armazenamento em texto puro.
-- Novos cadastros entram como COLLABORATOR. Todos os usuários autenticados podem consultar os registros da equipe e as configurações. Contas MANAGER também acessam a visão gerencial e podem alterar unidades e tipos de atividade.
+- Novos cadastros entram como COLLABORATOR. Todos os usuários autenticados podem consultar a visão gerencial, os registros da equipe e as configurações. Contas MANAGER podem alterar unidades e tipos de atividade.
 - Registros por usuário, filtros, edição, repetição, exportação CSV e gráficos permanecem na aplicação.
 - Limite de tentativas de login por conta e verificação de origem em requisições de autenticação.
 - Alteração de senha disponível na API autenticada POST /api/auth/password.

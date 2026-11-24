@@ -91,11 +91,11 @@ function categoryIcon(name: string) {
 }
 
 type Page = "register" | "todo" | "mine" | "dashboard" | "all" | "settings";
-const navEntries: { id: Page; label: string; mobileLabel: string; manager?: boolean }[] = [
+const navEntries: { id: Page; label: string; mobileLabel: string }[] = [
   { id: "register", label: "Registrar atividade", mobileLabel: "Registrar" },
   { id: "todo", label: "Tarefas", mobileLabel: "Tarefas" },
   { id: "mine", label: "Minhas atividades", mobileLabel: "Minhas" },
-  { id: "dashboard", label: "Visão gerencial", mobileLabel: "Gestão", manager: true },
+  { id: "dashboard", label: "Visão gerencial", mobileLabel: "Gráficos" },
   { id: "all", label: "Registros da equipe", mobileLabel: "Equipe" },
   { id: "settings", label: "Configurações", mobileLabel: "Ajustes" },
 ];
@@ -675,7 +675,6 @@ export default function App() {
     </>
   );
   const navigate = (p: Page) => {
-    if (!manager && p === "dashboard") return;
     setPage(p);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -777,7 +776,6 @@ export default function App() {
             <aside className="side" aria-label="Navegação principal">
               <div className="nav-label">ÁREA DE TRABALHO</div>
               {navEntries
-                .filter((n) => !n.manager || manager)
                 .map((n) => {
                   const Icon = sectionIcons[navEntries.indexOf(n)];
                   return (
@@ -1087,7 +1085,7 @@ export default function App() {
                   </Panel>
                 </>
               )}
-              {page === "dashboard" && manager && management()}
+              {page === "dashboard" && management()}
               {page === "all" && (
                 <>
                   {headline(
@@ -1223,7 +1221,6 @@ export default function App() {
           </div>
           <nav className="mobile-nav">
             {navEntries
-              .filter((n) => !n.manager || manager)
               .map((n) => {
                 const Icon = sectionIcons[navEntries.indexOf(n)];
                 return (
