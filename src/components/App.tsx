@@ -91,13 +91,13 @@ function categoryIcon(name: string) {
 }
 
 type Page = "register" | "todo" | "mine" | "dashboard" | "all" | "settings";
-const navEntries: { id: Page; label: string; manager?: boolean }[] = [
-  { id: "register", label: "Registrar atividade" },
-  { id: "todo", label: "Tarefas" },
-  { id: "mine", label: "Minhas atividades" },
-  { id: "dashboard", label: "Visão gerencial", manager: true },
-  { id: "all", label: "Registros da equipe", manager: true },
-  { id: "settings", label: "Configurações", manager: true },
+const navEntries: { id: Page; label: string; mobileLabel: string; manager?: boolean }[] = [
+  { id: "register", label: "Registrar atividade", mobileLabel: "Registrar" },
+  { id: "todo", label: "Tarefas", mobileLabel: "Tarefas" },
+  { id: "mine", label: "Minhas atividades", mobileLabel: "Minhas" },
+  { id: "dashboard", label: "Visão gerencial", mobileLabel: "Gestão", manager: true },
+  { id: "all", label: "Registros da equipe", mobileLabel: "Equipe" },
+  { id: "settings", label: "Configurações", mobileLabel: "Ajustes" },
 ];
 const today = () => {
   const d = new Date();
@@ -235,7 +235,6 @@ export default function App() {
     [status, setStatus] = useState<ActivityStatus>("DONE");
   const [newUnit, setNewUnit] = useState(""),
     [newCategory, setNewCategory] = useState("");
-  const demo = false;
   const manager = current?.role === "MANAGER";
   const request = useCallback(
     async (path: string, options: RequestInit = {}) => {
@@ -286,7 +285,7 @@ export default function App() {
     }
   };
   const mine = useMemo(
-    () => data?.activities.filter((r) => r.personId === current?.id) || [],
+    () => data?.ownActivities ?? data?.activities.filter((r) => r.personId === current?.id) ?? [],
     [data, current],
   );
   const weekRecords = useMemo(
@@ -676,7 +675,7 @@ export default function App() {
     </>
   );
   const navigate = (p: Page) => {
-    if (!manager && ["dashboard", "all", "settings"].includes(p)) return;
+    if (!manager && p === "dashboard") return;
     setPage(p);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -1089,7 +1088,7 @@ export default function App() {
                 </>
               )}
               {page === "dashboard" && manager && management()}
-              {page === "all" && manager && (
+              {page === "all" && (
                 <>
                   {headline(
                     "Registros da equipe",
@@ -1119,11 +1118,13 @@ export default function App() {
                   </Panel>
                 </>
               )}
-              {page === "settings" && manager && (
+              {page === "settings" && (
                 <>
                   {headline(
                     "Configurações",
-                    "Personalize as opções de preenchimento.",
+                    manager
+                      ? "Personalize as opções de preenchimento."
+                      : "Consulte as unidades e os tipos de atividade. A gestão pode alterar essas opções.",
                   )}
                   <div className="overview-grid">
                     {(
@@ -1162,59 +1163,60 @@ export default function App() {
                             <Chip
                               key={i.id}
                               label={i.name}
-                              onDelete={() => {
-                                if (group.items.length <= 1) {
-                                  setError("Mantenha pelo menos uma opção.");
-                                  return;
-                                }
-                                action(
-                                  () =>
-                                    request(
-                                      `/settings?kind=${group.kind}&id=${i.id}&personId=${encodeURIComponent(current.id)}`,
-                                      { method: "DELETE" },
-                                    ),
-                                  "Opção desativada.",
-                                );
-                              }}
+                              onDelete={
+                                manager
+                                  ? () => {
+                                      if (group.items.length <= 1) {
+                                        setError("Mantenha pelo menos uma opção.");
+                                        return;
+                                      }
+                                      action(
+                                        () =>
+                                          request(
+                                            `/settings?kind=${group.kind}&id=${i.id}&personId=${encodeURIComponent(current.id)}`,
+                                            { method: "DELETE" },
+                                          ),
+                                        "Opção desativada.",
+                                      );
+                                    }
+                                  : undefined
+                              }
                             />
                           ))}
                         </Stack>
-                        <Stack direction="row" gap={1}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="Nova opção"
-                            value={group.value}
-                            onChange={(e) => group.setValue(e.target.value)}
-                          />
-                          <Button
-                            disabled={busy || !group.value.trim()}
-                            variant="contained"
-                            onClick={() =>
-                              action(async () => {
-                                await request("/settings", {
-                                  method: "POST",
-                                  body: JSON.stringify({
-                                    kind: group.kind,
-                                    name: group.value,
-                                    personId: current.id,
-                                  }),
-                                });
-                                group.setValue("");
-                              }, "Opção adicionada.")
-                            }
-                          >
-                            Adicionar
-                          </Button>
-                        </Stack>
+                        {manager && (
+                          <Stack direction="row" gap={1}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="Nova opção"
+                              value={group.value}
+                              onChange={(e) => group.setValue(e.target.value)}
+                            />
+                            <Button
+                              disabled={busy || !group.value.trim()}
+                              variant="contained"
+                              onClick={() =>
+                                action(async () => {
+                                  await request("/settings", {
+                                    method: "POST",
+                                    body: JSON.stringify({
+                                      kind: group.kind,
+                                      name: group.value,
+                                      personId: current.id,
+                                    }),
+                                  });
+                                  group.setValue("");
+                                }, "Opção adicionada.")
+                              }
+                            >
+                              Adicionar
+                            </Button>
+                          </Stack>
+                        )}
                       </Panel>
                     ))}
                   </div>
-                  <Box sx={{ mt: 2 }}>
-                    <Alert severity={demo ? "warning" : "info"}>
-                      "As permissões de usuários e gestores são verificadas no servidor."
-                    </Alert>
-                  </Box>
                 </>
               )}
             </main>
@@ -1222,12 +1224,13 @@ export default function App() {
           <nav className="mobile-nav">
             {navEntries
               .filter((n) => !n.manager || manager)
-              .slice(0, 4)
               .map((n) => {
                 const Icon = sectionIcons[navEntries.indexOf(n)];
                 return (
                   <Button
                     key={n.id}
+                    aria-label={n.label}
+                    aria-current={page === n.id ? "page" : undefined}
                     onClick={() => navigate(n.id)}
                     sx={{
                       display: "flex",
@@ -1239,15 +1242,7 @@ export default function App() {
                     }}
                   >
                     <Icon size={18} />
-                    {n.id === "register"
-                      ? "Registrar"
-                      : n.id === "todo"
-                         ? "Tarefas"
-                       : n.id === "mine"
-                        ? "Minhas"
-                        : n.id === "dashboard"
-                          ? "Gestão"
-                          : "Equipe"}
+                    {n.mobileLabel}
                   </Button>
                 );
               })}
