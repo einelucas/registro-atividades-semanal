@@ -1,8 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Box, Typography } from "@mui/material";
+import { Box, ButtonBase, Stack, Typography } from "@mui/material";
 import type { ApexOptions } from "apexcharts";
-import type { Activity } from "../lib/types";
+import type { Activity, ActivityStatus } from "../lib/types";
 
 type ChartComponent = typeof import("react-apexcharts").default;
 function useApex() {
@@ -18,86 +18,100 @@ function useApex() {
   }, []);
   return Component;
 }
-const colors = [
-  "#245b9b",
-  "#6a98d5",
-  "#eea51e",
-  "#2a9b83",
-  "#8b73c8",
-  "#da718a",
-  "#8193a8",
-];
+const statusSlices = [
+  { status: "DONE", label: "Concluídas", color: "#245b9b" },
+  { status: "IN_PROGRESS", label: "Em andamento", color: "#eea51e" },
+] as const;
+
+export const chartGroupIds = {
+  unit: "unitId",
+  category: "categoryId",
+  person: "personId",
+} as const;
+
 export function BarChart({
   rows,
   field,
+  onSelect,
 }: {
   rows: Activity[];
-  field: "unit" | "category" | "person";
+  field: keyof typeof chartGroupIds;
+  onSelect: (id: string, label: string) => void;
 }) {
-  const C = useApex();
-  const map = new Map<string, number>();
-  rows.forEach((r) => map.set(r[field], (map.get(r[field]) || 0) + 1));
-  const pairs = [...map.entries()].sort((a, b) => b[1] - a[1]);
-  if (!pairs.length)
+  const groups = new Map<string, { id: string; label: string; count: number }>();
+  for (const row of rows) {
+    const id = row[chartGroupIds[field]];
+    const group = groups.get(id);
+    if (group) group.count++;
+    else groups.set(id, { id, label: row[field], count: 1 });
+  }
+  const ranked = [...groups.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR"));
+  if (!ranked.length)
     return (
       <Typography color="text.secondary" sx={{ py: 5, textAlign: "center" }}>
         Sem dados neste período.
       </Typography>
     );
-  const options: ApexOptions = {
-    chart: { toolbar: { show: false }, fontFamily: "inherit" },
-    colors: ["#245b9b"],
-    plotOptions: {
-      bar: {
-        borderRadius: 5,
-        horizontal: true,
-        barHeight: "55%",
-        distributed: false,
-      },
-    },
-    xaxis: {
-      categories: pairs.map((p) => p[0]),
-      labels: { style: { colors: "#8492a6" } },
-    },
-    yaxis: {
-      labels: { maxWidth: 145, style: { colors: "#65748a", fontSize: "12px" } },
-    },
-    grid: { borderColor: "#eef2f8" },
-    dataLabels: { enabled: true, style: { fontWeight: 600, colors: ["#fff"] } },
-    tooltip: { theme: "light" },
-  };
+  const max = ranked[0].count;
   return (
-    <Box
-      sx={{ width: "100%", minHeight: Math.max(215, pairs.length * 39 + 45) }}
-    >
-      {C ? (
-        <C
-          options={options}
-          series={[{ name: "Registros", data: pairs.map((p) => p[1]) }]}
-          type="bar"
-          height={Math.max(215, pairs.length * 39 + 45)}
-        />
-      ) : (
-        <Typography sx={{ py: 6 }} color="text.secondary">
-          Carregando gráfico...
-        </Typography>
-      )}
-    </Box>
+    <Stack gap={0.5}>
+      {ranked.map(({ id, label, count }) => (
+        <ButtonBase
+          key={id}
+          onClick={() => onSelect(id, label)}
+          aria-label={`${label}, ${count} ${count === 1 ? "registro" : "registros"}. Ver atividades`}
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 2fr) minmax(0, 3fr) minmax(3ch, auto)",
+            gap: 1,
+            minHeight: 44,
+            px: 1,
+            py: 0.5,
+            borderRadius: 1,
+            textAlign: "left",
+            "&:hover, &.Mui-focusVisible": { bgcolor: "action.hover" },
+            "&.Mui-focusVisible": { outline: "2px solid", outlineColor: "primary.main" },
+          }}
+        >
+          <Typography component="span" variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
+            {label}
+          </Typography>
+          <Box component="span" aria-hidden="true" sx={{ bgcolor: "action.hover", height: 12, borderRadius: 1 }}>
+            <Box component="span" sx={{ display: "block", bgcolor: "#245b9b", width: `${(count / max) * 100}%`, height: "100%", borderRadius: 1 }} />
+          </Box>
+          <Typography component="span" variant="body2" fontWeight={700} textAlign="right">
+            {count}
+          </Typography>
+        </ButtonBase>
+      ))}
+    </Stack>
   );
 }
-export function DonutChart({ rows }: { rows: Activity[] }) {
+export function DonutChart({ rows, onSelect }: {
+  rows: Activity[];
+  onSelect: (status: ActivityStatus, label: string) => void;
+}) {
   const C = useApex();
-  const done = rows.filter((r) => r.status === "DONE").length,
-    progress = rows.length - done;
+  const done = rows.filter((r) => r.status === "DONE").length;
+  const counts = [done, rows.length - done];
   const options: ApexOptions = {
-    chart: { fontFamily: "inherit" },
-    labels: ["Concluídas", "Em andamento"],
-    colors: [colors[0], colors[2]],
+    chart: {
+      fontFamily: "inherit",
+      events: {
+        dataPointSelection: (_event, _chart, { dataPointIndex }) => {
+          const slice = statusSlices[dataPointIndex];
+          if (slice) onSelect(slice.status, slice.label);
+        },
+      },
+    },
+    labels: statusSlices.map((slice) => slice.label),
+    colors: statusSlices.map((slice) => slice.color),
     dataLabels: { enabled: false },
-    legend: { position: "bottom" },
+    legend: { show: false },
     stroke: { width: 2 },
     plotOptions: {
       pie: {
+        expandOnClick: false,
         donut: {
           size: "72%",
           labels: {
@@ -119,19 +133,31 @@ export function DonutChart({ rows }: { rows: Activity[] }) {
       </Typography>
     );
   return (
-    <Box sx={{ width: "100%", minHeight: 265 }}>
+    <Box sx={{ width: "100%", minHeight: 265, "& .apexcharts-pie-area": { cursor: "pointer" } }}>
       {C ? (
         <C
           type="donut"
           options={options}
-          series={[done, progress]}
-          height={265}
+          series={counts}
+          height={225}
         />
       ) : (
         <Typography color="text.secondary" sx={{ py: 6 }}>
           Carregando gráfico...
         </Typography>
       )}
+      <Stack direction="row" justifyContent="center" gap={1} flexWrap="wrap">
+        {statusSlices.map(({ status, label, color }, index) => (
+          <ButtonBase
+            key={status}
+            onClick={() => onSelect(status, label)}
+            sx={{ gap: 0.75, minHeight: 44, px: 1, borderRadius: 1, "&:hover, &.Mui-focusVisible": { bgcolor: "action.hover" }, "&.Mui-focusVisible": { outline: "2px solid", outlineColor: "primary.main" } }}
+          >
+            <Box component="span" aria-hidden="true" sx={{ width: 9, height: 9, borderRadius: "50%", bgcolor: color }} />
+            <Typography component="span" variant="body2">{label} ({counts[index]})</Typography>
+          </ButtonBase>
+        ))}
+      </Stack>
     </Box>
   );
 }

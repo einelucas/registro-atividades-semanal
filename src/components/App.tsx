@@ -11,6 +11,10 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   FormControl,
   IconButton,
@@ -68,7 +72,7 @@ import type {
   Person,
   ActivityStatus,
 } from "../lib/types";
-import { BarChart, DonutChart } from "./Charts";
+import { BarChart, chartGroupIds, DonutChart } from "./Charts";
 import TodoWorkspace from "./todo/TodoWorkspace";
 import { theme } from "../lib/theme";
 const sectionIcons = [FilePlus, ListTodo, List, LayoutDashboard, UsersRound, Settings];
@@ -91,6 +95,11 @@ function categoryIcon(name: string) {
 }
 
 type Page = "register" | "todo" | "mine" | "dashboard" | "all" | "settings";
+type ChartSelection = {
+  field: keyof typeof chartGroupIds | "status";
+  id: string;
+  label: string;
+};
 const navEntries: { id: Page; label: string; mobileLabel: string }[] = [
   { id: "register", label: "Registrar atividade", mobileLabel: "Registrar" },
   { id: "todo", label: "Tarefas", mobileLabel: "Tarefas" },
@@ -235,6 +244,7 @@ export default function App() {
     [status, setStatus] = useState<ActivityStatus>("DONE");
   const [newUnit, setNewUnit] = useState(""),
     [newCategory, setNewCategory] = useState("");
+  const [chartSelection, setChartSelection] = useState<ChartSelection | null>(null);
   const manager = current?.role === "MANAGER";
   const request = useCallback(
     async (path: string, options: RequestInit = {}) => {
@@ -305,6 +315,12 @@ export default function App() {
       ) || [],
     [data, period, unitFilter, personFilter],
   );
+  const chartRecords = chartSelection
+    ? filtered.filter((record) => {
+        const key = chartSelection.field === "status" ? "status" : chartGroupIds[chartSelection.field];
+        return record[key] === chartSelection.id;
+      })
+    : [];
   const visibleMine = useMemo(
     () =>
       mine
@@ -514,25 +530,25 @@ export default function App() {
         title="Atividades por unidade"
         extra={<Chip size="small" label="Distribuição" />}
       >
-        <BarChart rows={rows} field="unit" />
+        <BarChart rows={rows} field="unit" onSelect={(id, label) => setChartSelection({ field: "unit", id, label })} />
       </Panel>
       <Panel
         title="Situação das atividades"
         extra={<Chip size="small" label="Resumo" />}
       >
-        <DonutChart rows={rows} />
+        <DonutChart rows={rows} onSelect={(id, label) => setChartSelection({ field: "status", id, label })} />
       </Panel>
       <Panel
         title="Tipos de atividade"
         extra={<Chip size="small" label="Categorias" />}
       >
-        <BarChart rows={rows} field="category" />
+        <BarChart rows={rows} field="category" onSelect={(id, label) => setChartSelection({ field: "category", id, label })} />
       </Panel>
       <Panel
         title="Registros por colaborador"
         extra={<Chip size="small" label="Participação" />}
       >
-        <BarChart rows={rows} field="person" />
+        <BarChart rows={rows} field="person" onSelect={(id, label) => setChartSelection({ field: "person", id, label })} />
       </Panel>
     </div>
   );
@@ -647,7 +663,9 @@ export default function App() {
       )}
       {filters}
       {stats(filtered)}
-      <Box sx={{ height: 20 }} />
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 2.5, mb: 1 }}>
+        Selecione um item nos gráficos para ver seus registros.
+      </Typography>
       {chartCards(filtered)}
       <Box sx={{ height: 20 }} />
       <Panel
@@ -1283,6 +1301,25 @@ export default function App() {
               </div>
             </div>
           )}
+          <Dialog
+            open={chartSelection !== null}
+            onClose={() => setChartSelection(null)}
+            aria-labelledby="chart-records-title"
+            fullWidth
+            maxWidth="md"
+            scroll="paper"
+          >
+            <DialogTitle id="chart-records-title">{chartSelection?.label}</DialogTitle>
+            <DialogContent dividers>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {chartRecords.length === 1 ? "1 atividade encontrada" : `${chartRecords.length} atividades encontradas`}
+              </Typography>
+              {table(chartRecords)}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setChartSelection(null)}>Fechar</Button>
+            </DialogActions>
+          </Dialog>
         </>
       )}
     </ThemeProvider>
